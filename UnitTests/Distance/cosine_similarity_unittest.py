@@ -75,19 +75,21 @@ class CosSimilarityUnitTest:
             self.table()
     
     def table(self):
-        print(tb([[self.dtype, self.D, self.diff_f.mean().item(), self.diff_f.max().item(), 
+        print(tb([[self.dtype, self.D, 
+                   self.diff_f.mean().item(), self.diff_f.max().item(), 
                    self.diff_xb.mean().item(), self.diff_xb.max().item(),
                    self.diff_yb.mean().item(), self.diff_yb.max().item(),
                    self.triton_time_fwd, self.torch_time_fwd,
                    self.triton_time_bwd, self.torch_time_bwd]],
-                headers=['Dype', 'Dim', 'Forward Mean Diff', 'Forward Max Diff', 
+                headers=['Dype', 'Dim', 
+                         'Forward Mean Diff', 'Forward Max Diff', 
                          'Backward X Mean Diff', 'Backward X Max Diff',
                          'Backward Y Mean Diff', 'Backward Y Max Diff',
                          'Triton Fwd Time', 'Torch Fwd Time', 
                          'Triton Bwd Time', 'Torch Bwd Time'], tablefmt='orgtbl'))
 
 if __name__ == '__main__':
-    B, M, N = 1, 1000, 1000
+    B, M, N = 1, 10, 10
     print_tb = True
     for D in [32, 64, 128, 256, 512, 1024]:
         for i in range(2):

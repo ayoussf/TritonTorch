@@ -1,6 +1,7 @@
 import triton
 import triton.language as tl
 import torch
+from TritonHub.utils import custom_fwd, custom_bwd
 from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
@@ -18,24 +19,20 @@ def _batched_matmul_fwd_kernel(x_ptr, stride_xb, stride_xm, stride_xk,
     pid_n = tl.program_id(axis=0) // num_pid_m
     pid_b = tl.program_id(axis=1)
 
-    x_ptr += pid_b * stride_xb
-    y_ptr += pid_b * stride_yb
-
     offs_m = pid_m * BLOCK_SIZE_M + tl.arange(0, BLOCK_SIZE_M)
     offs_n = pid_n * BLOCK_SIZE_N + tl.arange(0, BLOCK_SIZE_N)
     offs_k = tl.arange(0, BLOCK_SIZE_K)
-    x_ptrs = x_ptr + (offs_m[:, None] * stride_xm + offs_k[None, :] * stride_xk)
-    y_ptrs = y_ptr + (offs_k[:, None] * stride_yk + offs_n[None, :] * stride_yn)
+
+    x_ptr += (pid_b * stride_xb) + (offs_m[:, None] * stride_xm)
+    y_ptr += (pid_b * stride_yb) + (offs_n[None, :] * stride_yn)
 
     out = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_N), dtype=tl.float32)
-
     for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):
+        x_ptrs = x_ptr + ((k * BLOCK_SIZE_K + offs_k[None, :]) * stride_xk)
+        y_ptrs = y_ptr + ((k * BLOCK_SIZE_K + offs_k[:, None]) * stride_yk)
         x = tl.load(x_ptrs, mask=(offs_m[:, None] < M) & (offs_k[None, :] < (K - k * BLOCK_SIZE_K)), other=0.0).to(dtype)
         y = tl.load(y_ptrs, mask=(offs_k[:, None] < (K - k * BLOCK_SIZE_K)) & (offs_n[None, :] < N), other=0.0).to(dtype)
         out += tl.dot(x, y)
-        x_ptrs += BLOCK_SIZE_K * stride_xk
-        y_ptrs += BLOCK_SIZE_K * stride_yk
-    
     out = out.to(dtype)
 
     out_ptr += pid_b * stride_outb
@@ -85,21 +82,16 @@ def _batched_matmul_bwd_kernel_x(y_ptr, stride_yb, stride_yn, stride_yk,
     offs_k = pid_k * BLOCK_SIZE_K + tl.arange(0, BLOCK_SIZE_K)
     offs_n = tl.arange(0, BLOCK_SIZE_N)
 
-    y_ptr += pid_b * stride_yb
-    dout_ptr += pid_b * stride_doutb
-    
-    y_ptr = y_ptr + (offs_k[None, :] * stride_yk)
-    dout_ptr = dout_ptr + (offs_m[:, None] * stride_doutm)
+    y_ptr += (pid_b * stride_yb) + (offs_k[None, :] * stride_yk)
+    dout_ptr += (pid_b * stride_doutb) + (offs_m[:, None] * stride_doutm)
     
     dx = tl.zeros((BLOCK_SIZE_M, BLOCK_SIZE_K), dtype=tl.float32)
-    
     for n in range(0, tl.cdiv(N, BLOCK_SIZE_N)):
         y_ptrs = y_ptr + ((n * BLOCK_SIZE_N + offs_n[:, None]) * stride_yn)
         dout_ptrs = dout_ptr + ((n * BLOCK_SIZE_N + offs_n[None, :]) * stride_doutn)
         y = tl.load(y_ptrs, mask=(offs_n[:, None] < (N - n * BLOCK_SIZE_N)) & (offs_k[None, :] < K), other=0.0).to(dtype)
         dout = tl.load(dout_ptrs, mask=(offs_m[:, None] < M) & (offs_n[None, :] < (N - n * BLOCK_SIZE_N)), other=0.0).to(dtype)
         dx += tl.dot(dout, y)
-    
     dx = dx.to(dtype)
     
     dx_ptr += pid_b * stride_dxb
@@ -125,21 +117,16 @@ def _batched_matmul_bwd_kernel_y(x_ptr, stride_xb, stride_xm, stride_xk,
     offs_k = pid_k * BLOCK_SIZE_K + tl.arange(0, BLOCK_SIZE_K)
     offs_m = tl.arange(0, BLOCK_SIZE_M)
 
-    x_ptr += pid_b * stride_xb
-    dout_ptr += pid_b * stride_doutb
-    
-    x_ptr = x_ptr + (offs_k[:, None] * stride_xk)
-    dout_ptr = dout_ptr + (offs_n[None, :] * stride_doutn)
+    x_ptr += (pid_b * stride_xb) + (offs_k[:, None] * stride_xk)
+    dout_ptr += (pid_b * stride_doutb) + (offs_n[None, :] * stride_doutn)
     
     dy = tl.zeros((BLOCK_SIZE_K, BLOCK_SIZE_N), dtype=tl.float32)
-    
     for m in range(0, tl.cdiv(M, BLOCK_SIZE_M)):
         x_ptrs = x_ptr + ((m * BLOCK_SIZE_M + offs_m[None, :]) * stride_xm)
         dout_ptrs = dout_ptr + ((m * BLOCK_SIZE_M + offs_m[:, None]) * stride_doutm)
         x = tl.load(x_ptrs, mask=(offs_k[:, None] < K) & (offs_m[None, :] < (M - m * BLOCK_SIZE_M)), other=0.0).to(dtype)
         dout = tl.load(dout_ptrs, mask=(offs_m[:, None] < (M - m * BLOCK_SIZE_M)) & (offs_n[None, :] < N), other=0.0).to(dtype)
         dy += tl.dot(x, dout)
-    
     dy = dy.trans(1, 0).to(dtype)
     
     dy_ptr += pid_b * stride_dyb
@@ -177,7 +164,7 @@ def _batched_matmul_bwd(x, y, dout):
 
 class batched_matmul(torch.autograd.Function):
     @staticmethod
-    @torch.amp.custom_fwd(device_type='cuda')
+    @custom_fwd
     def forward(ctx, x, y):
         assert len(x.shape) == 3 and len(y.shape) == 3, "Expected 3D (B, M, K) and 3D (B, N, K) tensors"
         output = _batched_matmul_fwd(x, y)
@@ -185,7 +172,7 @@ class batched_matmul(torch.autograd.Function):
         return output
 
     @staticmethod
-    @torch.amp.custom_bwd(device_type='cuda')
+    @custom_bwd
     def backward(ctx, grad_output):
         x, y = ctx.saved_tensors
         grad_x, grad_y = _batched_matmul_bwd(x, y, grad_output)

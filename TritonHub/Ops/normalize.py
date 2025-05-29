@@ -2,6 +2,7 @@ import triton
 import triton.language as tl
 import torch
 from TritonHub.Ops.norm import _norm_fwd_kernel
+from TritonHub.utils import custom_fwd, custom_bwd
 from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
@@ -143,7 +144,7 @@ def _normalize_bwd(x, x_norm, norms_x, dout, p=2):
 
 class Normalize(torch.autograd.Function):
     @staticmethod
-    @torch.amp.custom_fwd(device_type='cuda')
+    @custom_fwd
     def forward(ctx, x, p=2, eps=1e-6):
         assert len(x.shape) == 3, "Expected Tensor to be 3D (B, L, D), add batch dim input is 2D"
         ctx.p = p
@@ -152,7 +153,7 @@ class Normalize(torch.autograd.Function):
         return x_norm
 
     @staticmethod
-    @torch.amp.custom_bwd(device_type='cuda')
+    @custom_bwd
     def backward(ctx, grad_output):
         p = ctx.p
         x, x_norm, norms_x = ctx.saved_tensors

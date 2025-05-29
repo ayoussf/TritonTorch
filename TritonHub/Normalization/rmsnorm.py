@@ -4,6 +4,7 @@ import torch
 import triton
 import triton.language as tl
 import math
+from TritonHub.utils import custom_fwd, custom_bwd
 from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
@@ -38,17 +39,17 @@ def _rmsnorm_kernel_fwd(X,
     tl.store(Y + cols, y, mask=mask)
 
 def _rmsnorm_fwd(x, weight, eps):
-    if x.stride(-1) != 1:
-        x = x.contiguous()
     batch_shape = x.shape[:-1]
     x = x.reshape(-1, x.shape[-1])
+    if x.stride(-1) != 1:
+        x = x.contiguous()
     assert x.stride(-1) == 1, 'expect input to be row-major'
     M, N = x.shape
     if weight is not None:
         weight = weight.contiguous()
         assert weight.shape == (N,), 'expect weight to have shape (N,)'
         assert weight.stride(-1) == 1, 'expect weight to be row-major'
-    out = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype)
+    out = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype, device=x.device)
     assert out.stride(-1) == 1, 'expect output to be row-major'
     rstd = torch.empty((M,), dtype=torch.float32, device=x.device)
     HAS_WEIGHT = True if weight is not None else False
@@ -138,7 +139,7 @@ def _rmsnorm_bwd(x, dout, weight, rstd, eps):
         weight = weight.contiguous()
         assert weight.shape == (N,), 'expect weight to have shape (N,)'
         assert weight.stride(-1) == 1, 'expect weight to be row-major'
-    dx = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype)
+    dx = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype, device=x.device)
     assert dx.stride(-1) == 1, 'expect derivative to be row-major'
     MAX_FUSED_SIZE = 65536 // x.element_size()
     BLOCK_SIZE = min(MAX_FUSED_SIZE, triton.next_power_of_2(N))
@@ -168,16 +169,18 @@ def _rmsnorm_bwd(x, dout, weight, rstd, eps):
 
 class rmsnorm(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, input, weight, eps):
-        output, rstd = _rmsnorm_fwd(input, weight, eps)
-        ctx.save_for_backward(input, weight, rstd)
+    @custom_fwd
+    def forward(ctx, x, weight, eps):
+        output, rstd = _rmsnorm_fwd(x, weight, eps)
+        ctx.save_for_backward(x, weight, rstd)
         ctx.eps = eps
         return output
 
     @staticmethod
+    @custom_bwd
     def backward(ctx, d_out):
-        input, weight, rstd = ctx.saved_tensors
-        grad, dw, = _rmsnorm_bwd(input, d_out, weight, rstd, ctx.eps)
+        x, weight, rstd = ctx.saved_tensors
+        grad, dw, = _rmsnorm_bwd(x, d_out, weight, rstd, ctx.eps)
         return grad, dw, None
 
 class RMSNorm(torch.nn.Module):

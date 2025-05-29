@@ -2,6 +2,7 @@ import torch
 import triton
 import triton.language as tl
 import math
+from TritonHub.utils import custom_fwd, custom_bwd
 from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
@@ -43,7 +44,7 @@ def _linear_kernel_fwd(X,
     for k in range(0, tl.cdiv(K, BLOCK_SIZE_K)):
         x = tl.load(X, mask=offs_k[None, :] < K - k * BLOCK_SIZE_K, other=0.0)
         w = tl.load(W, mask=offs_k[:, None] < K - k * BLOCK_SIZE_K, other=0.0)
-        y = tl.dot(x, w, y)
+        y += tl.dot(x, w)
         X += BLOCK_SIZE_K * stride_ak
         W += BLOCK_SIZE_K * stride_bk
     if HAS_BIAS:
@@ -55,16 +56,16 @@ def _linear_kernel_fwd(X,
     tl.store(Y, y, mask=c_mask)
     
 def _linear_fwd(x, weight, bias):
-    if x.stride(-1) != 1:
-        x = x.contiguous()
     batch_shape = x.shape[:-1]
     x = x.reshape(-1, x.shape[-1])
+    if x.stride(-1) != 1:
+        x = x.contiguous()
     assert x.stride(-1) == 1, 'expect input to be row-major'
     M, K = x.shape
     N = weight.shape[-1]
     weight = weight.contiguous()
     assert weight.stride(-1) == 1, 'expect weight to be row-major'
-    out = torch.empty((M, N), dtype=x.dtype, device=x.device)
+    out = torch.empty((M, N), memory_format=torch.contiguous_format, dtype=x.dtype, device=x.device)
     assert out.stride(-1) == 1, 'expect output to be row-major'
     HAS_BIAS = True if bias is not None else False
     grid = lambda META: (triton.cdiv(M, META['BLOCK_SIZE_M']) * triton.cdiv(N, META['BLOCK_SIZE_N']), )
@@ -175,7 +176,7 @@ def _linear_kernel_bwd_dw(X, DOUT, DW,
     tl.store(DW_ptr, DW_acc, mask=mask)
 
 @triton.autotune(
-    configs=get_cuda_autotune_config(block_keys=['M', 'N'], include_group_size=True, include_fp8_configs=True),
+    configs=get_cuda_autotune_config(block_keys=['M', 'N'], include_group_size=False, include_fp8_configs=True),
     key=['M', 'N'],
 )
 @triton.jit
@@ -207,8 +208,8 @@ def _linear_bwd(x, dout, weight, bias):
         dout = dout.contiguous()
     assert dout.stride(-1) == 1, 'expect output to be row-major'
     N = weight.shape[-1]
-    dx = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype)
-    dw = torch.empty_like(weight, memory_format=torch.contiguous_format, dtype=weight.dtype)
+    dx = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype, device=x.device)
+    dw = torch.empty_like(weight, memory_format=torch.contiguous_format, dtype=weight.dtype, device=weight.device)
     
     grid_dx = lambda META: (triton.cdiv(M, META['BLOCK_SIZE_M']) * triton.cdiv(K, META['BLOCK_SIZE_K']),)
     grid_dw = lambda META: (triton.cdiv(K, META['BLOCK_SIZE_K']) * triton.cdiv(N, META['BLOCK_SIZE_N']),)
@@ -241,15 +242,17 @@ def _linear_bwd(x, dout, weight, bias):
  
 class linear(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, input, weight, bias):
-        output = _linear_fwd(input, weight, bias)
-        ctx.save_for_backward(input, weight, bias)
+    @custom_fwd
+    def forward(ctx, x, weight, bias):
+        output = _linear_fwd(x, weight, bias)
+        ctx.save_for_backward(x, weight, bias)
         return output
 
     @staticmethod
+    @custom_bwd
     def backward(ctx, d_out):
-        input, weight, bias = ctx.saved_tensors
-        grad, dw, db = _linear_bwd(input, d_out, weight, bias)
+        x, weight, bias = ctx.saved_tensors
+        grad, dw, db = _linear_bwd(x, d_out, weight, bias)
         return grad, dw, db
 
 class Linear(torch.nn.Module):

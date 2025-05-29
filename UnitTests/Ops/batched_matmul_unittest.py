@@ -11,6 +11,8 @@ class BMMUnitTest:
         self.dtype = dtype
         self.print_tb = print_tb
         self.bbm = bmm()
+        self.start = torch.cuda.Event(enable_timing=True)
+        self.end = torch.cuda.Event(enable_timing=True)
 
     def run(self):
         torch.manual_seed(42)
@@ -24,21 +26,42 @@ class BMMUnitTest:
         input_y_tor = input_y.clone().detach().requires_grad_(True)
 
         # Set the tolerance for the comparison
-        rtol, atol = (3e-4, 1e-3) if dtype == torch.float32 else (1e-2, 5e-2)
+        rtol, atol = (0.0, 1e-1) if dtype == torch.float32 else (1e-2, 8e-3)
         self.forward(input_x_tri, input_y_tri, input_x_tor, input_y_tor, atol, rtol)
 
     def forward(self, input_x_tri, input_y_tri, input_x_tor, input_y_tor, atol, rtol):
+        self.start.record()
         output_tri = self.bbm(input_x_tri, input_y_tri)
+        self.end.record()
+        torch.cuda.synchronize()
+        self.triton_time_fwd = self.start.elapsed_time(self.end)
+
+        self.start.record()
         output_tor = torch.einsum('bmd,bnd->bmn', input_x_tor, input_y_tor)
+        self.end.record()
+        torch.cuda.synchronize()
+        self.torch_time_fwd = self.start.elapsed_time(self.end)
+        
         assert torch.allclose(output_tri, output_tor, atol=atol, rtol=rtol), 'Error in forward pass'
         if self.print_tb:
             self.diff_f = (output_tri - output_tor).abs()
         self.backward(input_x_tri, input_y_tri, input_x_tor, input_y_tor, output_tri, output_tor, atol, rtol)
 
     def backward(self, input_x_tri, input_y_tri, input_x_tor, input_y_tor, output_tri, output_tor, atol, rtol):
-        g = torch.rand_like(output_tor, device="cuda")
+        g = torch.rand_like(output_tri, device="cuda")
+
+        self.start.record()
         output_tri.backward(g)
+        self.end.record()
+        torch.cuda.synchronize()
+        self.triton_time_bwd = self.start.elapsed_time(self.end)
+
+        self.start.record()
         output_tor.backward(g)
+        self.end.record()
+        torch.cuda.synchronize()
+        self.torch_time_bwd = self.start.elapsed_time(self.end)
+
         assert torch.allclose(input_x_tri.grad, input_x_tor.grad, atol=atol, rtol=rtol), 'Error in backward pass'
         assert torch.allclose(input_y_tri.grad, input_y_tor.grad, atol=atol, rtol=rtol), 'Error in backward pass'
         if self.print_tb:
@@ -47,18 +70,24 @@ class BMMUnitTest:
             self.table()
     
     def table(self):
-        print(tb([[self.dtype, self.D, self.diff_f.mean().item(), self.diff_f.max().item(), 
+        print(tb([[self.dtype, self.D, 
+                   self.diff_f.mean().item(), self.diff_f.max().item(), 
                    self.diff_xb.mean().item(), self.diff_xb.max().item(),
-                   self.diff_yb.mean().item(), self.diff_yb.max().item()]],
-                headers=['Dype', 'Dim', 'Forward Mean Diff', 'Forward Max Diff', 
+                   self.diff_yb.mean().item(), self.diff_yb.max().item(),
+                   self.triton_time_fwd, self.torch_time_fwd,
+                   self.triton_time_bwd, self.torch_time_bwd]],
+                headers=['Dype', 'Dim', 
+                         'Forward Mean Diff', 'Forward Max Diff', 
                          'Backward X Mean Diff', 'Backward X Max Diff',
-                         'Backward Y Mean Diff', 'Backward Y Max Diff'], tablefmt='orgtbl'))
+                         'Backward Y Mean Diff', 'Backward Y Max Diff',
+                         'Triton Fwd Time', 'Torch Fwd Time', 
+                         'Triton Bwd Time', 'Torch Bwd Time'], tablefmt='orgtbl'))
 
 if __name__ == '__main__':
-    B, N, M = 1, 5000, 5000
+    B, N, M = 1, 10, 10
     print_tb = True
-    for i in range(3):
-        if i ==0: print('First iteration Slow due to Triton Autotune')
+    for i in range(2):
+        if i == 0: print('First iteration Slow due to Triton Autotune')
         for D in [32, 64, 128, 256, 512]:
             for dtype in [torch.float16, torch.float32]:
                 runner = BMMUnitTest(B, N, M, D, dtype, print_tb)

@@ -1,6 +1,7 @@
 import triton
 import triton.language as tl
 import torch
+from TritonHub.utils import custom_fwd, custom_bwd
 from TritonHub.Ops.norm import _norm_fwd_kernel
 from TritonHub.Ops.normalize import _normalize_fwd_kernel
 from TritonHub.Ops.batched_matmul import _batched_matmul_fwd_kernel
@@ -51,7 +52,7 @@ def _cos_sim_fwd(x, y, eps=1e-6):
     return out, x_norm, y_norm, norms_x, norms_y
 
 @triton.autotune(
-    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K'], include_extra_configs=True),
+    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K'], include_extra_configs=True, include_fp8_configs=True),
     key=['M', 'N', 'K'])
 @triton.jit
 def _cos_sim_bwd_kernel(out_ptr, stride_outb, stride_outm, stride_outn, 
@@ -174,7 +175,7 @@ def _cos_sim_bwd(out, x_norm, y_norm, norms_x, norms_y, dout):
 
 class CosineSimilarity(torch.autograd.Function):
     @staticmethod
-    @torch.amp.custom_fwd(device_type='cuda')
+    @custom_fwd
     def forward(ctx, x, y, eps=1e-6):
         assert len(x.shape) == 3 and len(y.shape) == 3, "Expected 3D (B, M, D) and 3D (B, N, D) tensors, add batch dim inputs are 2D"
         output, x_norm, y_norm, norms_x, norms_y = _cos_sim_fwd(x, y, eps)
@@ -182,7 +183,7 @@ class CosineSimilarity(torch.autograd.Function):
         return output
 
     @staticmethod
-    @torch.amp.custom_bwd(device_type='cuda')
+    @custom_bwd
     def backward(ctx, grad_output):
         output, x_norm, y_norm, norms_x, norms_y = ctx.saved_tensors
         grad_x, grad_y = _cos_sim_bwd(output, x_norm, y_norm, norms_x, norms_y, grad_output)

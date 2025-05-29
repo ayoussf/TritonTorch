@@ -73,13 +73,21 @@ class LogSoftmaxUnitTest:
             self.table()
     
     def table(self):
-        print(tb([[self.dtype, self.D, self.diff_f.mean().item(), self.diff_f.max().item(), self.diff_b.mean().item(), self.diff_b.max().item(), self.triton_time_fwd, self.torch_time_fwd, self.triton_time_bwd, self.torch_time_bwd]],
-                headers=['Dype', 'Dim', 'Forward Mean Diff', 'Forward Max Diff', 'Backward Mean Diff', 'Backward Max Diff', 'Triton Fwd Time', 'Torch Fwd Time', 'Triton Bwd Time', 'Torch Bwd Time'], tablefmt='orgtbl'))
+        print(tb([[self.dtype, self.D, 
+                   self.diff_f.mean().item(), self.diff_f.max().item(), 
+                   self.diff_b.mean().item(), self.diff_b.max().item(), 
+                   self.triton_time_fwd, self.torch_time_fwd, 
+                   self.triton_time_bwd, self.torch_time_bwd]],
+                headers=['Dype', 'Dim', 
+                         'Forward Mean Diff', 'Forward Max Diff', 
+                         'Backward Mean Diff', 'Backward Max Diff', 
+                         'Triton Fwd Time', 'Torch Fwd Time', 
+                         'Triton Bwd Time', 'Torch Bwd Time'], tablefmt='orgtbl'))
 
 if __name__ == '__main__':
     B, N, M = 1, 256, 256
     print_tb = True
-    for D in [32, 64, 128, 256, 512, 1024]:
+    for D in [32, 64, 128, 256, 512, 1024, 2048]:
         for i in range(2):
             if i ==0: print('First iteration Slow due to Triton Autotune'); print_tb=False 
             else: print_tb=True

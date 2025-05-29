@@ -2,6 +2,7 @@ import torch
 import triton
 import triton.language as tl
 import random
+from TritonHub.utils import custom_fwd, custom_bwd
 from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
@@ -33,7 +34,9 @@ def _dropout_fwd(x, p, seed, training):
         input_shape = x.shape
         N = x.shape[-1]
         x = x.reshape(-1)
-        out = torch.empty_like(x, memory_format=torch.contiguous_format)
+        if x.stride(-1) != 1:
+            x = x.contiguous()
+        out = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype, device=x.device)
         assert out.shape == x.shape, 'expect output shape to be the same as input shape'
         assert out.stride(-1) == 1, 'expect output to be row-major'
         M = x.shape[0]
@@ -73,12 +76,14 @@ def _dropout_bwd(dout, p, seed, training):
     if (p == 0.0) or (not training):
         return dout
     elif p == 1.0:
-        return torch.zeros_like(dout, memory_format=torch.contiguous_format)
+        return torch.zeros_like(dout, memory_format=torch.contiguous_format, dtype=dout.dtype, device=dout.device)
     else:
         input_shape = dout.shape
         N = dout.shape[-1]
         dout = dout.reshape(-1)
-        dx = torch.empty_like(dout, memory_format=torch.contiguous_format)
+        if dout.stride(-1) != 1:
+            dout = dout.contiguous()
+        dx = torch.empty_like(dout, memory_format=torch.contiguous_format, dtype=dout.dtype, device=dout.device)
         assert dout.shape == dx.shape, 'expect output shape to be the same as input shape'
         assert dout.stride(-1) == 1, 'expect output to be row-major'
         M = dout.shape[0]
@@ -96,6 +101,7 @@ def _dropout_bwd(dout, p, seed, training):
 
 class dropout(torch.autograd.Function):
     @staticmethod
+    @custom_fwd
     def forward(ctx, input, p, training):
         seed = random.randint(0, 2**16)
         output = _dropout_fwd(input, p, seed, training)
@@ -105,6 +111,7 @@ class dropout(torch.autograd.Function):
         return output
 
     @staticmethod
+    @custom_bwd
     def backward(ctx, d_out):
         p = ctx.p
         seed = ctx.seed

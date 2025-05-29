@@ -1,6 +1,7 @@
 import torch
 import triton
 import triton.language as tl
+from TritonHub.utils import custom_fwd, custom_bwd
 from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
@@ -92,12 +93,14 @@ def _logsoftmax_bwd(x, dout):
 
 class logsoftmax(torch.autograd.Function):
     @staticmethod
+    @custom_fwd
     def forward(ctx, input):
         output = _logsoftmax_fwd(input)
         ctx.save_for_backward(output)
         return output
 
     @staticmethod
+    @custom_bwd
     def backward(ctx, d_out):
         output, = ctx.saved_tensors
         grad = _logsoftmax_bwd(output, d_out)

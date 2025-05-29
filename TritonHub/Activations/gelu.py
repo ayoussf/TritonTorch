@@ -2,6 +2,7 @@ import torch
 import triton
 import triton.language as tl
 import math
+from TritonHub.utils import custom_fwd, custom_bwd
 from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
@@ -33,7 +34,7 @@ def _gelu_fwd(x, approximate='none'):
         x = x.contiguous()
     batch_shape = x.shape[:-1]
     x = x.reshape(-1, x.shape[-1])
-    out = torch.empty_like(x, memory_format=torch.contiguous_format)
+    out = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype, device=x.device)
     assert out.shape == x.shape, 'expect output shape to be the same as input shape'
     assert out.stride(-1) == 1, 'expect output to be row-major'
     M, N = x.shape
@@ -89,7 +90,7 @@ def _gelu_bwd(x, dout, approximate='none'):
     x = x.reshape(-1, x.shape[-1])
     dout = dout.reshape(-1, dout.shape[-1])
     assert x.shape == dout.shape, 'expect input and output shape to be the same'
-    dx = torch.empty_like(x, memory_format=torch.contiguous_format)
+    dx = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype, device=x.device)
     assert dx.stride(-1) == 1, 'expect derivative to be row-major'
     M, N = x.shape
     grid = lambda META: (M, triton.cdiv(N, META['BLOCK_SIZE']))
@@ -106,6 +107,7 @@ def _gelu_bwd(x, dout, approximate='none'):
 
 class gelu(torch.autograd.Function):
     @staticmethod
+    @custom_fwd
     def forward(ctx, input, approximate):
         output = _gelu_fwd(input, approximate)
         ctx.save_for_backward(input)
@@ -113,6 +115,7 @@ class gelu(torch.autograd.Function):
         return output
 
     @staticmethod
+    @custom_bwd
     def backward(ctx, d_out):
         input, = ctx.saved_tensors
         grad = _gelu_bwd(input, d_out, ctx.approximate)

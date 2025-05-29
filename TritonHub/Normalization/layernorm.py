@@ -4,6 +4,7 @@ import torch
 import triton
 import triton.language as tl
 import math
+from TritonHub.utils import custom_fwd, custom_bwd
 from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
@@ -46,10 +47,10 @@ def _layernorm_kernel_fwd(X,
     tl.store(Y + cols, y, mask=mask)
 
 def _layernorm_fwd(x, weight, bias, eps):
-    if x.stride(-1) != 1:
-        x = x.contiguous()
     batch_shape = x.shape[:-1]
     x = x.reshape(-1, x.shape[-1])
+    if x.stride(-1) != 1:
+        x = x.contiguous()
     assert x.stride(-1) == 1, 'expect input to be row-major'
     M, N = x.shape
     if weight is not None:
@@ -60,7 +61,7 @@ def _layernorm_fwd(x, weight, bias, eps):
         bias = bias.contiguous()
         assert bias.shape == (N,), 'expect bias to have shape (N,)'
         assert bias.stride(-1) == 1, 'expect bias to be row-major'
-    out = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype)
+    out = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype, device=x.device)
     assert out.stride(-1) == 1, 'expect output to be row-major'
     mean = torch.empty((M,), dtype=torch.float32, device=x.device)
     rstd = torch.empty((M,), dtype=torch.float32, device=x.device)
@@ -173,7 +174,7 @@ def _layernorm_bwd(x, dout, weight, bias, mean, rstd, eps):
         bias = bias.contiguous()
         assert bias.shape == (N,), 'expect bias to have shape (N,)'
         assert bias.stride(-1) == 1, 'expect bias to be row-major'
-    dx = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype)
+    dx = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype, device=x.device)
     assert dx.stride(-1) == 1, 'expect derivative to be row-major'
     MAX_FUSED_SIZE = 65536 // x.element_size()
     BLOCK_SIZE = min(MAX_FUSED_SIZE, triton.next_power_of_2(N))
@@ -210,16 +211,18 @@ def _layernorm_bwd(x, dout, weight, bias, mean, rstd, eps):
 
 class layernorm(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, input, weight, bias, eps):
-        output, mean, rstd = _layernorm_fwd(input, weight, bias, eps)
-        ctx.save_for_backward(input, weight, bias, mean, rstd)
+    @custom_fwd
+    def forward(ctx, x, weight, bias, eps):
+        output, mean, rstd = _layernorm_fwd(x, weight, bias, eps)
+        ctx.save_for_backward(x, weight, bias, mean, rstd)
         ctx.eps = eps
         return output
 
     @staticmethod
+    @custom_bwd
     def backward(ctx, d_out):
-        input, weight, bias, mean, rstd = ctx.saved_tensors
-        grad, dw, db = _layernorm_bwd(input, d_out, weight, bias, mean, rstd, ctx.eps)
+        x, weight, bias, mean, rstd = ctx.saved_tensors
+        grad, dw, db = _layernorm_bwd(x, d_out, weight, bias, mean, rstd, ctx.eps)
         return grad, dw, db, None
 
 class LayerNorm(torch.nn.Module):

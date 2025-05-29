@@ -1,6 +1,7 @@
 import torch
 import triton
 import triton.language as tl
+from TritonHub.utils import custom_fwd, custom_bwd
 from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
@@ -24,7 +25,7 @@ def _relu_fwd(x):
         x = x.contiguous()
     batch_shape = x.shape[:-1]
     x = x.reshape(-1, x.shape[-1])
-    out = torch.empty_like(x, memory_format=torch.contiguous_format)
+    out = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype, device=x.device)
     assert out.shape == x.shape, 'expect output shape to be the same as input shape'
     assert out.stride(-1) == 1, 'expect output to be row-major'
     M, N = x.shape
@@ -65,7 +66,7 @@ def _relu_bwd(x, dout):
     x = x.reshape(-1, x.shape[-1])
     dout = dout.reshape(-1, dout.shape[-1])
     assert x.shape == dout.shape, 'expect input and output shape to be the same'
-    dx = torch.empty_like(x, memory_format=torch.contiguous_format)
+    dx = torch.empty_like(x, memory_format=torch.contiguous_format, dtype=x.dtype, device=x.device)
     assert dx.stride(-1) == 1, 'expect derivative to be row-major'
     M, N = x.shape
     grid = lambda META: (M, triton.cdiv(N, META['BLOCK_SIZE']))
@@ -80,12 +81,14 @@ def _relu_bwd(x, dout):
 
 class relu(torch.autograd.Function):
     @staticmethod
+    @custom_fwd
     def forward(ctx, input):
         output = _relu_fwd(input)
         ctx.save_for_backward(input)
         return output
 
     @staticmethod
+    @custom_bwd
     def backward(ctx, d_out):
         input, = ctx.saved_tensors
         grad = _relu_bwd(input, d_out)

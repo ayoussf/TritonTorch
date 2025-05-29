@@ -57,10 +57,10 @@ if __name__ == '__main__':
     B, N, M = 1, 256, 256
     print_tb = True
     for app in ['none', 'tanh']:
-        print(f'TESTING WITH {app} APPROXIMATION')   
-        for i in range(2):
-            if i ==0: print('First iteration Slow due to Triton Autotune')
-            for D in [32, 64, 128, 256, 512, 1024, 2048]:
+        print(f'TESTING WITH {app} APPROXIMATION')
+        for D in [32, 64, 128, 256, 512, 1024, 2048]:
+            for i in range(2):
+                if i ==0: print('First iteration Slow due to Triton Autotune')
                 for dtype in [torch.float16, torch.float32, torch.float64]:
                     runner = GeLUUnitTest(B, N, M, D, dtype, print_tb, app)
                     runner.run()
