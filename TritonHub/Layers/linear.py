@@ -84,7 +84,7 @@ def _linear_fwd(x, weight, bias):
     return out.reshape(*batch_shape, N)
 
 @triton.autotune(
-    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K'], include_group_size=True, include_fp8_configs=True),
+    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K'], include_group_size=True, include_fp8_configs=True, include_extra_configs=True),
     key=['M', 'N', 'K'],
 )
 @triton.jit
@@ -130,7 +130,7 @@ def _linear_kernel_bwd_dx(DOUT, W, DX,
     tl.store(DX_ptr, DX_acc, mask=mask)
 
 @triton.autotune(
-    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K'], include_group_size=True, include_fp8_configs=True),
+    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K'], include_group_size=True, include_fp8_configs=True, include_extra_configs=True),
     key=['M', 'N', 'K'],
 )
 @triton.jit

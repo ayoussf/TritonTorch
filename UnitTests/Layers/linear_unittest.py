@@ -91,7 +91,7 @@ if __name__ == '__main__':
     bias = True
     print_tb = True
     for D in [32, 64, 128, 256, 512, 1024, 2048]:
-        for i in range(5):
+        for i in range(2):
             if i ==0: print('First iteration Slow due to Triton Autotune'); print_tb=False 
             else: print_tb=True
             for dtype in [torch.float16, torch.float32]:

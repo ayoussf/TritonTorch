@@ -99,6 +99,7 @@ TritonHub currently supports the following modules, with <span style="color:gree
 | Activation Functions   | ✅ |
 | Distance Functions               | ✅ |
 | Batched Matmul               | ✅ |
+| Warmup Unit Tests more efficiently | ❌ |
 
 ## 🤝 Contributions
 
