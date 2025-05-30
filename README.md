@@ -11,8 +11,8 @@ TritonHub is a *differentiable*, efficient, and modular open-source library of P
 Clone the repository and install using `setup.py`:
 
 ```bash
-git clone https://github.com/ayoussf/TritonHub.git
-cd TritonHub
+git clone https://github.com/ayoussf/Triton-Hub.git
+cd Triton-Hub
 python setup.py install
 ```
 
