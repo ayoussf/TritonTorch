@@ -90,9 +90,9 @@ def _softplus_bwd(x, dout, beta, threshold):
 class softplus(torch.autograd.Function):
     @staticmethod
     @custom_fwd
-    def forward(ctx, input, beta, threshold):
-        output = _softplus_fwd(input, beta, threshold)
-        ctx.save_for_backward(input)
+    def forward(ctx, x, beta, threshold):
+        output = _softplus_fwd(x, beta, threshold)
+        ctx.save_for_backward(x)
         ctx.beta = beta
         ctx.threshold = threshold
         return output
@@ -100,8 +100,8 @@ class softplus(torch.autograd.Function):
     @staticmethod
     @custom_bwd
     def backward(ctx, d_out):
-        input, = ctx.saved_tensors
-        grad = _softplus_bwd(input, d_out, ctx.beta, ctx.threshold)
+        x, = ctx.saved_tensors
+        grad = _softplus_bwd(x, d_out, ctx.beta, ctx.threshold)
         return grad, None, None
 
 class Softplus:

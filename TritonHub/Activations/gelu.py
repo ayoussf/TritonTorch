@@ -108,17 +108,17 @@ def _gelu_bwd(x, dout, approximate='none'):
 class gelu(torch.autograd.Function):
     @staticmethod
     @custom_fwd
-    def forward(ctx, input, approximate):
-        output = _gelu_fwd(input, approximate)
-        ctx.save_for_backward(input)
+    def forward(ctx, x, approximate):
+        output = _gelu_fwd(x, approximate)
+        ctx.save_for_backward(x)
         ctx.approximate = approximate
         return output
 
     @staticmethod
     @custom_bwd
     def backward(ctx, d_out):
-        input, = ctx.saved_tensors
-        grad = _gelu_bwd(input, d_out, ctx.approximate)
+        x, = ctx.saved_tensors
+        grad = _gelu_bwd(x, d_out, ctx.approximate)
         return grad, None
 
 class GeLU:

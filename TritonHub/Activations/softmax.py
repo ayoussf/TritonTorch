@@ -87,8 +87,8 @@ def _softmax_bwd(x, dout):
 class softmax(torch.autograd.Function):
     @staticmethod
     @custom_fwd
-    def forward(ctx, input):
-        output = _softmax_fwd(input)
+    def forward(ctx, x):
+        output = _softmax_fwd(x)
         ctx.save_for_backward(output)
         return output
 

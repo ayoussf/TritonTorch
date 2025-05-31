@@ -6,7 +6,7 @@ from TritonHub.utils import custom_fwd, custom_bwd
 from TritonHub.autotune import get_cuda_autotune_config
 
 @triton.autotune(
-    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K'], include_group_size=True, include_fp8_configs=True),
+    configs=get_cuda_autotune_config(block_keys=['M', 'N', 'K'], include_group_size=True, include_fp8_configs=True, include_extra_configs=True),
     key=['M', 'N', 'K'],
 )
 @triton.jit
@@ -231,7 +231,7 @@ def _linear_bwd(x, dout, weight, bias):
 
         # Compute grad_bias if bias is not None
         if bias is not None:
-            db = torch.empty_like(bias, memory_format=torch.contiguous_format, dtype=bias.dtype)
+            db = torch.empty_like(bias, memory_format=torch.contiguous_format, dtype=bias.dtype, device=bias.device)
             grid_db = lambda META: (triton.cdiv(N, META['BLOCK_SIZE_N']),)
             _linear_kernel_bwd_db[grid_db](dout, db,
                                            M, N,

@@ -86,17 +86,17 @@ def _leakyrelu_bwd(x, dout, negative_slope=0.01):
 class leakyrelu(torch.autograd.Function):
     @staticmethod
     @custom_fwd
-    def forward(ctx, input, negative_slope):
-        output = _leakyrelu_fwd(input, negative_slope)
-        ctx.save_for_backward(input)
+    def forward(ctx, x, negative_slope):
+        output = _leakyrelu_fwd(x, negative_slope)
+        ctx.save_for_backward(x)
         ctx.negative_slope = negative_slope
         return output
 
     @staticmethod
     @custom_bwd
     def backward(ctx, d_out):
-        input, = ctx.saved_tensors
-        grad = _leakyrelu_bwd(input, d_out, ctx.negative_slope)
+        x, = ctx.saved_tensors
+        grad = _leakyrelu_bwd(x, d_out, ctx.negative_slope)
         return grad, None
 
 class LeakyReLU:

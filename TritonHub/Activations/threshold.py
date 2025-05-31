@@ -86,9 +86,9 @@ def _threshold_bwd(x, dout, threshold, value):
 class threshold_fn(torch.autograd.Function):
     @staticmethod
     @custom_fwd
-    def forward(ctx, input, threshold, value):
-        output = _threshold_fwd(input, threshold, value)
-        ctx.save_for_backward(input)
+    def forward(ctx, x, threshold, value):
+        output = _threshold_fwd(x, threshold, value)
+        ctx.save_for_backward(x)
         ctx.threshold = threshold
         ctx.value = value
         return output
@@ -96,10 +96,10 @@ class threshold_fn(torch.autograd.Function):
     @staticmethod
     @custom_bwd
     def backward(ctx, d_out):
-        input, = ctx.saved_tensors
+        x, = ctx.saved_tensors
         threshold = ctx.threshold
         value = ctx.value
-        grad = _threshold_bwd(input, d_out, threshold, value)
+        grad = _threshold_bwd(x, d_out, threshold, value)
         return grad, None, None
 
 class Threshold:

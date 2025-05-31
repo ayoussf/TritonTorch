@@ -82,8 +82,8 @@ def _sigmoid_bwd(x, dout):
 class sigmoid(torch.autograd.Function):
     @staticmethod
     @custom_fwd
-    def forward(ctx, input):
-        output = _sigmoid_fwd(input)
+    def forward(ctx, x):
+        output = _sigmoid_fwd(x)
         ctx.save_for_backward(output)
         return output
 

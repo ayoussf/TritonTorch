@@ -83,16 +83,16 @@ def _silu_bwd(x, dout):
 class silu(torch.autograd.Function):
     @staticmethod
     @custom_fwd
-    def forward(ctx, input):
-        output = _silu_fwd(input)
-        ctx.save_for_backward(input)
+    def forward(ctx, x):
+        output = _silu_fwd(x)
+        ctx.save_for_backward(x)
         return output
 
     @staticmethod
     @custom_bwd
     def backward(ctx, d_out):
-        input, = ctx.saved_tensors
-        grad = _silu_bwd(input, d_out)
+        x, = ctx.saved_tensors
+        grad = _silu_bwd(x, d_out)
         return grad
 
 class SiLU:

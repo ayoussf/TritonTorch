@@ -84,8 +84,8 @@ def _tanh_bwd(x, dout):
 class tanh(torch.autograd.Function):
     @staticmethod
     @custom_fwd
-    def forward(ctx, input):
-        output = _tanh_fwd(input)
+    def forward(ctx, x):
+        output = _tanh_fwd(x)
         ctx.save_for_backward(output)
         return output
 

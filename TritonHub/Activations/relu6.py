@@ -84,16 +84,16 @@ def _relu6_bwd(x, dout):
 class relu6(torch.autograd.Function):
     @staticmethod
     @custom_fwd
-    def forward(ctx, input):
-        output = _relu6_fwd(input)
-        ctx.save_for_backward(input)
+    def forward(ctx, x):
+        output = _relu6_fwd(x)
+        ctx.save_for_backward(x)
         return output
 
     @staticmethod
     @custom_bwd
     def backward(ctx, d_out):
-        input, = ctx.saved_tensors
-        grad = _relu6_bwd(input, d_out)
+        x, = ctx.saved_tensors
+        grad = _relu6_bwd(x, d_out)
         return grad
 
 class ReLU6:

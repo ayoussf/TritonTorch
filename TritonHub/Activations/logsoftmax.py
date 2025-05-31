@@ -94,8 +94,8 @@ def _logsoftmax_bwd(x, dout):
 class logsoftmax(torch.autograd.Function):
     @staticmethod
     @custom_fwd
-    def forward(ctx, input):
-        output = _logsoftmax_fwd(input)
+    def forward(ctx, x):
+        output = _logsoftmax_fwd(x)
         ctx.save_for_backward(output)
         return output
 
