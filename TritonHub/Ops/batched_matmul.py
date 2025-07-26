@@ -178,8 +178,5 @@ class batched_matmul(torch.autograd.Function):
         grad_x, grad_y = _batched_matmul_bwd(x, y, grad_output)
         return grad_x, grad_y
 
-class bmm:
-    def __init__(self):
-        self.bmm = batched_matmul.apply
-    def __call__(self, x, y):
-        return self.bmm(x, y)
+def bmm(x, y):
+    return batched_matmul.apply(x, y)

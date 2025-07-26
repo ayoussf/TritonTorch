@@ -10,7 +10,6 @@ class BMMUnitTest:
         self.D = D
         self.dtype = dtype
         self.print_tb = print_tb
-        self.bbm = bmm()
         self.start = torch.cuda.Event(enable_timing=True)
         self.end = torch.cuda.Event(enable_timing=True)
 
@@ -31,7 +30,7 @@ class BMMUnitTest:
 
     def forward(self, input_x_tri, input_y_tri, input_x_tor, input_y_tor, atol, rtol):
         self.start.record()
-        output_tri = self.bbm(input_x_tri, input_y_tri)
+        output_tri = bmm(input_x_tri, input_y_tri)
         self.end.record()
         torch.cuda.synchronize()
         self.triton_time_fwd = self.start.elapsed_time(self.end)
