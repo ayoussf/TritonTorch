@@ -76,6 +76,7 @@ TritonHub currently supports the following modules, with <span style="color:gree
   - Linear
   - Dropout
   - Multi-Layer Perceptron (Gated-MLP or FFN)
+  - Multi head Attention
   - **Planned: Convolution Layers (1D/2D)**
 
 - **Distance Functions**
@@ -99,6 +100,7 @@ TritonHub currently supports the following modules, with <span style="color:gree
 | Activation Functions   | ✅ |
 | Distance Functions               | ✅ |
 | Batched Matmul               | ✅ |
+| Multi head Attention               | ✅ |
 | Warmup Unit Tests more efficiently | ❌ |
 
 ## 🤝 Contributions
