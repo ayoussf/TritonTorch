@@ -77,7 +77,8 @@ TritonHub currently supports the following modules, with <span style="color:gree
   - Dropout
   - Multi-Layer Perceptron (Gated-MLP or FFN)
   - Multi head Attention
-  - **Planned: Convolution Layers (1D/2D)**
+  - 1D Convolution
+  - **Planned: 2D Convolution Layer**
 
 - **Distance Functions**
   - Pairwise cosine similarity
@@ -93,7 +94,8 @@ TritonHub currently supports the following modules, with <span style="color:gree
 |----------------------------------|--------------|
 | Linear Layer Backward Pass       | ✅ |
 | Include Triton Block Sizes in Autotune | ✅ |
-| Convolution Layer (1D/2D)               | ❌ |
+| 1D Convolution Layer               | ✅ |
+| 2D Convolution Layer            | ❌ |
 | BatchNorm                        | ❌ |
 | L1 and p Tensor Normalization               | ✅ |
 | Matrix/Vector L1, L2 and p Norms         | ✅ |

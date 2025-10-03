@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='TritonHub',
-    version='1.1.1',
+    version='1.2.0',
     author='Ali Youssef',
     description='A collection of Triton-based neural network modules',
     long_description=open('README.md').read(),
@@ -11,5 +11,6 @@ setup(
     packages=find_packages(exclude=['build', 'dist', 'TritonHub.egg-info', 'UnitTests']),
     python_requires='>=3.7',
     install_requires=['torch',
-                      'triton'],
+                      'triton',
+                      'einops'],
     )
