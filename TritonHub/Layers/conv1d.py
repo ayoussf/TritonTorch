@@ -26,7 +26,7 @@ def _conv1d_kernel_fwd(X,
                        BLOCK_SIZE_K: tl.constexpr,
                        GROUP_SIZE_M: tl.constexpr,
                        HAS_BIAS: tl.constexpr):
-        
+    
     pid = tl.program_id(0)
     num_pid_m = tl.cdiv(M, BLOCK_SIZE_M)
     num_pid_n = tl.cdiv(N, BLOCK_SIZE_N)

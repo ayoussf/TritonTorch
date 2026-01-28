@@ -151,6 +151,6 @@ class MHA(nn.Module):
         qk = self.softmax(qk)
         qk = self.dropout(qk)
         context = bmm(qk, v)
-        context = rearrange(context, "h (b l) d -> b l (h d)", b=b)
+        context = rearrange(context, "(b h) l d -> b l (h d)", b=b)
         out = self.out_proj(context)
         return out
