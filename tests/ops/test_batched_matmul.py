@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pytest
 import torch
-from TritonHub.Ops import bmm
+from TritonTorch.Ops import bmm
 from tests.base import TritonKernelTest, RunConfig
 from tests.utils import RunConfig, BenchmarkResult, parametrize_dtypes, parametrize_dims
 

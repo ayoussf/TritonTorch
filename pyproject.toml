@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "TritonHub"
-version = "2.0.0"
+name = "TritonTorch"
+version = "3.0.0"
 authors = [
     {name = "Ali Youssef"}
 ]
@@ -38,13 +38,13 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ayoussf/Triton-Hub"
-Repository = "https://github.com/ayoussf/Triton-Hub"
-Issues = "https://github.com/ayoussf/Triton-Hub/issues"
-PullRequests = "https://github.com/ayoussf/Triton-Hub/pulls"
+Homepage = "https://github.com/ayoussf/TritonTorch"
+Repository = "https://github.com/ayoussf/TritonTorch"
+Issues = "https://github.com/ayoussf/TritonTorch/issues"
+PullRequests = "https://github.com/ayoussf/TritonTorch/pulls"
 
 [tool.setuptools.packages.find]
-exclude = ["build", "dist", "TritonHub.egg-info", "tests"]
+exclude = ["build", "dist", "TritonTorch.egg-info", "tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

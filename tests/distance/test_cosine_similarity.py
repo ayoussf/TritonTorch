@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pytest
 import torch
-from TritonHub.Distance import cosine_similarity
+from TritonTorch.Distance import cosine_similarity
 from tests.base import TritonKernelTest
 from tests.utils import RunConfig, BenchmarkResult, parametrize_dtypes, parametrize_dims
 

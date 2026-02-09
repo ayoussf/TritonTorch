@@ -2,7 +2,7 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn as nn
-from TritonHub.Activations import Softmin
+from TritonTorch.Activations import Softmin
 from tests.base import TritonKernelTest 
 from tests.utils import RunConfig, parametrize_dtypes, parametrize_dims
 

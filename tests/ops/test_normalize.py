@@ -2,7 +2,7 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn.functional as F
-from TritonHub.Ops import normalize
+from TritonTorch.Ops import normalize
 from tests.base import TritonKernelTest
 from tests.utils import RunConfig, parametrize_dtypes, parametrize_dims
 

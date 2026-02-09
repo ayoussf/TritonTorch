@@ -2,7 +2,7 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn as nn
-from TritonHub.Normalization import RMSNorm
+from TritonTorch.Normalization import RMSNorm
 from tests.base import TritonKernelTest
 from tests.utils import RunConfig, parametrize_dtypes, parametrize_dims
 

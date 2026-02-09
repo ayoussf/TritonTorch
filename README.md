@@ -1,9 +1,9 @@
 <p align="center">
-    <img src="./assets/tritonhub.jpg" alt="TritonHub" style="object-fit: cover;"/>
+    <img src="./assets/TritonTorch.png" alt="TritonTorch" style="object-fit: cover;"/>
 </p>
 
 <p align="center">
-    <a href="https://github.com/ayoussf/Triton-Hub/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
+    <a href="https://github.com/ayoussf/TritonTorch/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
     <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python 3.8+"></a>
     <a href="https://pytorch.org/"><img src="https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg" alt="PyTorch 2.0+"></a>
     <a href="https://github.com/triton-lang/triton"><img src="https://img.shields.io/badge/Triton-Enabled-green.svg" alt="Triton"></a>
@@ -13,7 +13,7 @@
 
 ## Overview
 
-**TritonHub** is a *fully differentiable*, efficient, and modular open-source library of PyTorch neural network modules and operations implemented in [Triton](https://github.com/triton-lang/triton). It provides GPU-accelerated primitives that leverage Triton's low-level control and parallelism, enabling seamless integration of deep learning building blocks into your workflows.
+**TritonTorch** is a *fully differentiable*, efficient, and modular open-source library of PyTorch neural network modules and operations implemented in [Triton](https://github.com/triton-lang/triton). It provides GPU-accelerated primitives that leverage Triton's low-level control and parallelism, enabling seamless integration of deep learning building blocks into your workflows.
 
 <!-- --- -->
 
@@ -42,8 +42,8 @@
 ### From Source
 
 ```bash
-git clone https://github.com/ayoussf/Triton-Hub.git
-cd Triton-Hub
+git clone https://github.com/ayoussf/TritonTorch.git
+cd TritonTorch
 pip install .
 ```
 
@@ -59,8 +59,8 @@ pip install -e '.[dev]'
 
 ```python
 import torch
-from TritonHub.Normalization import LayerNorm
-from TritonHub.Activations import ReLU
+from TritonTorch.Normalization import LayerNorm
+from TritonTorch.Activations import ReLU
 
 # Configuration
 batch, length, dim = 2, 100, 128
@@ -153,13 +153,13 @@ Contributions are welcome! To contribute:
 4. Ensure compatibility with PyTorch and Triton
 5. Submit a pull request
 
-Found a bug or have a suggestion? Please [Open an issue](https://github.com/ayoussf/Triton-Hub/issues) or submit a [Pull Request](https://github.com/ayoussf/Triton-Hub/pulls).
+Found a bug or have a suggestion? Please [Open an issue](https://github.com/ayoussf/TritonTorch/issues) or submit a [Pull Request](https://github.com/ayoussf/TritonTorch/pulls).
 
 <!-- --- -->
 
 ## License
 
-TritonHub is released under the [MIT License](LICENSE). You are free to use, modify, and distribute it.
+TritonTorch is released under the [MIT License](LICENSE). You are free to use, modify, and distribute it.
 
 <!-- --- -->
 
